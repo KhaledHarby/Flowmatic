@@ -3,9 +3,9 @@ using Microsoft.OpenApi.Models;
 using Serilog;
 using Hangfire;
 using Hangfire.SqlServer;
+using Hangfire.Dashboard;
 using FlowMaster.Infrastructure.Data;
 using FlowMaster.Application.Interfaces;
-using FlowMaster.Application.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -56,9 +56,10 @@ builder.Services.AddAutoMapper(typeof(Program));
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 
 // Register application services
-builder.Services.AddScoped<IWorkflowDefinitionService, WorkflowDefinitionService>();
-builder.Services.AddScoped<IWorkflowEngine, WorkflowEngine>();
-builder.Services.AddScoped<IApplicationStatusService, ApplicationStatusService>();
+// TODO: Implement these services
+// builder.Services.AddScoped<IWorkflowDefinitionService, WorkflowDefinitionService>();
+// builder.Services.AddScoped<IWorkflowEngine, WorkflowEngine>();
+// builder.Services.AddScoped<IApplicationStatusService, ApplicationStatusService>();
 
 // Configure Swagger
 builder.Services.AddEndpointsApiExplorer();

@@ -45,6 +45,10 @@ public class FlowMasterDbContext : DbContext
             entity.Property(e => e.CurrentNodeId).HasMaxLength(100);
             entity.Property(e => e.StartedBy).HasMaxLength(100);
             entity.Property(e => e.ErrorMessage).HasMaxLength(500);
+            entity.Property(e => e.Variables).HasConversion(
+                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                v => System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new Dictionary<string, object>()
+            );
             entity.HasIndex(e => e.ApplicationId);
             entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.StartedAt);
@@ -66,6 +70,9 @@ public class FlowMasterDbContext : DbContext
                   .WithMany(e => e.Nodes)
                   .HasForeignKey(e => e.WorkflowDefinitionId)
                   .OnDelete(DeleteBehavior.Cascade);
+            // Ignore navigation properties that can't be properly mapped
+            entity.Ignore(e => e.SourceEdges);
+            entity.Ignore(e => e.TargetEdges);
         });
 
         // WorkflowEdge configuration
@@ -82,14 +89,9 @@ public class FlowMasterDbContext : DbContext
                   .WithMany(e => e.Edges)
                   .HasForeignKey(e => e.WorkflowDefinitionId)
                   .OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(e => e.SourceNode)
-                  .WithMany(e => e.SourceEdges)
-                  .HasForeignKey(e => e.SourceNodeId)
-                  .OnDelete(DeleteBehavior.Restrict);
-            entity.HasOne(e => e.TargetNode)
-                  .WithMany(e => e.TargetEdges)
-                  .HasForeignKey(e => e.TargetNodeId)
-                  .OnDelete(DeleteBehavior.Restrict);
+            // Ignore navigation properties that can't be properly mapped
+            entity.Ignore(e => e.SourceNode);
+            entity.Ignore(e => e.TargetNode);
         });
 
         // WorkflowTask configuration
@@ -138,6 +140,10 @@ public class FlowMasterDbContext : DbContext
             entity.Property(e => e.ApplicationId).IsRequired().HasMaxLength(100);
             entity.Property(e => e.CurrentStatus).IsRequired().HasMaxLength(100);
             entity.Property(e => e.PreviousStatus).HasMaxLength(100);
+            entity.Property(e => e.Metadata).HasConversion(
+                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                v => System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new Dictionary<string, object>()
+            );
             entity.Property(e => e.UpdatedBy).IsRequired().HasMaxLength(100);
             entity.HasIndex(e => e.ApplicationId).IsUnique();
             entity.HasIndex(e => e.CurrentStatus);
@@ -155,6 +161,10 @@ public class FlowMasterDbContext : DbContext
             entity.Property(e => e.Status).IsRequired().HasMaxLength(100);
             entity.Property(e => e.ChangedBy).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Reason).HasMaxLength(500);
+            entity.Property(e => e.Metadata).HasConversion(
+                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                v => System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new Dictionary<string, object>()
+            );
             entity.HasIndex(e => e.ApplicationStatusId);
             entity.HasIndex(e => e.ChangedAt);
             entity.HasOne(e => e.ApplicationStatus)
