@@ -14,4 +14,5 @@ public interface IWorkflowEngine
     Task<bool> ResumeInstanceAsync(Guid instanceId);
     Task<List<WorkflowInstanceLogDto>> GetInstanceLogsAsync(Guid instanceId);
     Task<bool> RetryInstanceAsync(Guid instanceId);
+    Task<WorkflowInstanceDto> TakeActionAsync(Guid workflowDefinitionId, string applicationId, string action, string actedBy);
 }

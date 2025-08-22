@@ -21,18 +21,24 @@ public class WorkflowTask
     
     public TaskPriority Priority { get; set; } = TaskPriority.Normal;
     
-    [Required]
-    [MaxLength(100)]
-    public string AssignedTo { get; set; } = string.Empty;
+    // User assignment properties
+    public Guid? AssignedToUserId { get; set; }
     
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    [MaxLength(100)]
+    public string AssignedTo { get; set; } = string.Empty; // Legacy field for backward compatibility
+    
+    public DateTime? AssignedAt { get; set; }
     
     public DateTime? DueDate { get; set; }
     
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    
     public DateTime? CompletedAt { get; set; }
     
+    public Guid? CompletedByUserId { get; set; }
+    
     [MaxLength(100)]
-    public string? CompletedBy { get; set; }
+    public string? CompletedBy { get; set; } // Legacy field for backward compatibility
     
     public string Result { get; set; } = string.Empty; // JSON result data
     
@@ -42,8 +48,20 @@ public class WorkflowTask
     [MaxLength(100)]
     public string NodeId { get; set; } = string.Empty;
     
+    // Assignment metadata
+    public TaskAssignmentType AssignmentType { get; set; } = TaskAssignmentType.Manual;
+    
+    [MaxLength(500)]
+    public string? AssignmentNotes { get; set; }
+    
+    public DateTime? ReminderSentAt { get; set; }
+    
+    public int ReminderCount { get; set; } = 0;
+    
     // Navigation properties
     public WorkflowInstance WorkflowInstance { get; set; } = null!;
+    public User? AssignedToUser { get; set; }
+    public User? CompletedByUser { get; set; }
 }
 
 public enum TaskStatus
@@ -52,7 +70,8 @@ public enum TaskStatus
     InProgress,
     Completed,
     Cancelled,
-    Overdue
+    Overdue,
+    Reassigned
 }
 
 public enum TaskPriority
@@ -61,4 +80,13 @@ public enum TaskPriority
     Normal,
     High,
     Critical
+}
+
+public enum TaskAssignmentType
+{
+    Manual,
+    Automatic,
+    RoundRobin,
+    LoadBalanced,
+    RoleBased
 }

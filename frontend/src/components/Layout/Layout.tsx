@@ -1,61 +1,53 @@
 import React from 'react';
 import {
   Box,
-  Drawer,
   AppBar,
   Toolbar,
   Typography,
-  IconButton,
+  Drawer,
   List,
   ListItem,
   ListItemIcon,
   ListItemText,
+  ListItemButton,
   Divider,
-  useTheme,
+  IconButton
 } from '@mui/material';
 import {
-  Menu as MenuIcon,
-  Dashboard as DashboardIcon,
-  AccountTree as WorkflowIcon,
-  PlayArrow as InstanceIcon,
-  Apps as ApplicationIcon,
-  Settings as SettingsIcon,
-  Notifications as NotificationsIcon,
+  Dashboard,
+  AccountTree,
+  PlayArrow,
+  LibraryBooks,
+  Menu,
+  People,
+  Science,
+  Assignment
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useSelector, useDispatch } from 'react-redux';
-import { RootState } from '../../store';
-import { toggleSidebar } from '../../store/slices/uiSlice';
-import NotificationSystem from '../NotificationSystem/NotificationSystem';
-
-const drawerWidth = 240;
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
+const drawerWidth = 240;
+
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const theme = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const dispatch = useDispatch();
-  
-  const { sidebarOpen } = useSelector((state: RootState) => state.ui);
+  const [mobileOpen, setMobileOpen] = React.useState(false);
 
   const menuItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-    { text: 'Workflows', icon: <WorkflowIcon />, path: '/workflows' },
-    { text: 'Instances', icon: <InstanceIcon />, path: '/instances' },
-    { text: 'Applications', icon: <ApplicationIcon />, path: '/applications' },
-    { text: 'Settings', icon: <SettingsIcon />, path: '/settings' },
+    { text: 'Dashboard', icon: <Dashboard />, path: '/' },
+    { text: 'Workflows', icon: <AccountTree />, path: '/workflows' },
+    { text: 'Instances', icon: <PlayArrow />, path: '/instances' },
+    { text: 'Applications', icon: <Assignment />, path: '/applications' },
+    { text: 'Users', icon: <People />, path: '/users' },
+    { text: 'Examples', icon: <LibraryBooks />, path: '/examples' },
+    { text: 'Simulator', icon: <Science />, path: '/simulator' },
   ];
 
-  const handleNavigation = (path: string) => {
-    navigate(path);
-  };
-
-  const isActiveRoute = (path: string) => {
-    return location.pathname === path || location.pathname.startsWith(path + '/');
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
   };
 
   const drawer = (
@@ -68,31 +60,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <Divider />
       <List>
         {menuItems.map((item) => (
-          <ListItem
-            button
-            key={item.text}
-            onClick={() => handleNavigation(item.path)}
-            selected={isActiveRoute(item.path)}
-            sx={{
-              '&.Mui-selected': {
-                backgroundColor: theme.palette.primary.light,
-                color: theme.palette.primary.contrastText,
-                '&:hover': {
-                  backgroundColor: theme.palette.primary.main,
-                },
-              },
-            }}
-          >
-            <ListItemIcon
-              sx={{
-                color: isActiveRoute(item.path) 
-                  ? theme.palette.primary.contrastText 
-                  : 'inherit',
+          <ListItem key={item.text} disablePadding>
+            <ListItemButton
+              selected={location.pathname === item.path}
+              onClick={() => {
+                navigate(item.path);
+                setMobileOpen(false);
               }}
             >
-              {item.icon}
-            </ListItemIcon>
-            <ListItemText primary={item.text} />
+              <ListItemIcon>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.text} />
+            </ListItemButton>
           </ListItem>
         ))}
       </List>
@@ -113,17 +91,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             color="inherit"
             aria-label="open drawer"
             edge="start"
-            onClick={() => dispatch(toggleSidebar())}
+            onClick={handleDrawerToggle}
             sx={{ mr: 2, display: { sm: 'none' } }}
           >
-            <MenuIcon />
+            <Menu />
           </IconButton>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
-            {menuItems.find(item => isActiveRoute(item.path))?.text || 'FlowMaster'}
+          <Typography variant="h6" noWrap component="div">
+            {menuItems.find(item => item.path === location.pathname)?.text || 'FlowMaster'}
           </Typography>
-          <IconButton color="inherit">
-            <NotificationsIcon />
-          </IconButton>
         </Toolbar>
       </AppBar>
 
@@ -133,8 +108,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       >
         <Drawer
           variant="temporary"
-          open={sidebarOpen}
-          onClose={() => dispatch(toggleSidebar())}
+          open={mobileOpen}
+          onClose={handleDrawerToggle}
           ModalProps={{
             keepMounted: true, // Better open performance on mobile.
           }}
@@ -163,10 +138,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           flexGrow: 1,
           p: 3,
           width: { sm: `calc(100% - ${drawerWidth}px)` },
-          mt: '64px',
+          mt: 8,
         }}
       >
-        <NotificationSystem />
         {children}
       </Box>
     </Box>

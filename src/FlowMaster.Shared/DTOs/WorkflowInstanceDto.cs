@@ -135,7 +135,8 @@ public enum TaskStatus
     InProgress,
     Completed,
     Cancelled,
-    Overdue
+    Overdue,
+    Reassigned
 }
 
 public enum TaskPriority
@@ -153,4 +154,13 @@ public enum LogLevel
     Warning,
     Error,
     Critical
+}
+
+public enum TaskAssignmentType
+{
+    Manual,
+    Automatic,
+    RoundRobin,
+    LoadBalanced,
+    RoleBased
 }

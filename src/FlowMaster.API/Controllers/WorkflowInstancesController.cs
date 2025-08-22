@@ -45,6 +45,25 @@ public class WorkflowInstancesController : ControllerBase
     }
 
     /// <summary>
+    /// Take an action on a workflow by definition and application id (e.g., Approve/Reject)
+    /// </summary>
+    [HttpPost("take-action")]
+    public async Task<ActionResult<WorkflowInstanceDto>> TakeAction([FromBody] TakeActionRequest dto)
+    {
+        try
+        {
+            var actedBy = User.Identity?.Name ?? "System";
+            var result = await _workflowEngine.TakeActionAsync(dto.WorkflowDefinitionId, dto.ApplicationId, dto.Action, actedBy);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error taking action {Action} for workflow {WorkflowDefinitionId} and app {ApplicationId}", dto.Action, dto.WorkflowDefinitionId, dto.ApplicationId);
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Get all active workflow instances
     /// </summary>
     [HttpGet]
@@ -212,4 +231,11 @@ public class WorkflowInstancesController : ControllerBase
 public class CancelInstanceDto
 {
     public string Reason { get; set; } = string.Empty;
+}
+
+public class TakeActionRequest
+{
+    public Guid WorkflowDefinitionId { get; set; }
+    public string ApplicationId { get; set; } = string.Empty;
+    public string Action { get; set; } = string.Empty;
 }

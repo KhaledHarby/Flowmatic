@@ -15,8 +15,7 @@ public class FlowMasterDbContext : DbContext
     public DbSet<WorkflowEdge> WorkflowEdges { get; set; }
     public DbSet<WorkflowTask> WorkflowTasks { get; set; }
     public DbSet<WorkflowInstanceLog> WorkflowInstanceLogs { get; set; }
-    public DbSet<ApplicationStatus> ApplicationStatuses { get; set; }
-    public DbSet<StatusHistory> StatusHistories { get; set; }
+    public DbSet<User> Users { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -32,8 +31,6 @@ public class FlowMasterDbContext : DbContext
             entity.Property(e => e.DefinitionJson).IsRequired();
             entity.Property(e => e.CreatedBy).IsRequired().HasMaxLength(100);
             entity.Property(e => e.UpdatedBy).HasMaxLength(100);
-            entity.HasIndex(e => e.Category);
-            entity.HasIndex(e => e.Status);
             entity.HasIndex(e => e.CreatedAt);
         });
 
@@ -94,6 +91,23 @@ public class FlowMasterDbContext : DbContext
             entity.Ignore(e => e.TargetNode);
         });
 
+        // User configuration
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Username).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Email).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.FirstName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.LastName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Department).HasMaxLength(100);
+            entity.Property(e => e.Role).HasMaxLength(100);
+            entity.HasIndex(e => e.Username).IsUnique();
+            entity.HasIndex(e => e.Email).IsUnique();
+            entity.HasIndex(e => e.Department);
+            entity.HasIndex(e => e.Role);
+            entity.HasIndex(e => e.Status);
+        });
+
         // WorkflowTask configuration
         modelBuilder.Entity<WorkflowTask>(entity =>
         {
@@ -101,17 +115,29 @@ public class FlowMasterDbContext : DbContext
             entity.Property(e => e.TaskId).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Description).HasMaxLength(1000);
-            entity.Property(e => e.AssignedTo).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.AssignedTo).HasMaxLength(100);
             entity.Property(e => e.CompletedBy).HasMaxLength(100);
             entity.Property(e => e.Result);
             entity.Property(e => e.NodeId).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.AssignmentNotes).HasMaxLength(500);
             entity.HasIndex(e => e.WorkflowInstanceId);
+            entity.HasIndex(e => e.AssignedToUserId);
             entity.HasIndex(e => e.AssignedTo);
             entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.Priority);
+            entity.HasIndex(e => e.DueDate);
             entity.HasOne(e => e.WorkflowInstance)
                   .WithMany(e => e.Tasks)
                   .HasForeignKey(e => e.WorkflowInstanceId)
                   .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.AssignedToUser)
+                  .WithMany(u => u.AssignedTasks)
+                  .HasForeignKey(e => e.AssignedToUserId)
+                  .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(e => e.CompletedByUser)
+                  .WithMany(u => u.CompletedTasks)
+                  .HasForeignKey(e => e.CompletedByUserId)
+                  .OnDelete(DeleteBehavior.NoAction);
         });
 
         // WorkflowInstanceLog configuration
@@ -120,56 +146,16 @@ public class FlowMasterDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.NodeId).IsRequired().HasMaxLength(100);
             entity.Property(e => e.NodeName).IsRequired().HasMaxLength(200);
-            entity.Property(e => e.Message).IsRequired().HasMaxLength(500);
+            entity.Property(e => e.Message).IsRequired();
             entity.Property(e => e.Data);
             entity.Property(e => e.ExecutedBy).HasMaxLength(100);
-            entity.Property(e => e.ErrorDetails).HasMaxLength(500);
+            entity.Property(e => e.ErrorDetails);
             entity.HasIndex(e => e.WorkflowInstanceId);
             entity.HasIndex(e => e.Timestamp);
             entity.HasIndex(e => e.Level);
             entity.HasOne(e => e.WorkflowInstance)
                   .WithMany(e => e.ExecutionLog)
                   .HasForeignKey(e => e.WorkflowInstanceId)
-                  .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        // ApplicationStatus configuration
-        modelBuilder.Entity<ApplicationStatus>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.ApplicationId).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.CurrentStatus).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.PreviousStatus).HasMaxLength(100);
-            entity.Property(e => e.Metadata).HasConversion(
-                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                v => System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new Dictionary<string, object>()
-            );
-            entity.Property(e => e.UpdatedBy).IsRequired().HasMaxLength(100);
-            entity.HasIndex(e => e.ApplicationId).IsUnique();
-            entity.HasIndex(e => e.CurrentStatus);
-            entity.HasIndex(e => e.LastUpdated);
-            entity.HasOne(e => e.CurrentWorkflowInstance)
-                  .WithMany()
-                  .HasForeignKey(e => e.CurrentWorkflowInstanceId)
-                  .OnDelete(DeleteBehavior.SetNull);
-        });
-
-        // StatusHistory configuration
-        modelBuilder.Entity<StatusHistory>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Status).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.ChangedBy).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Reason).HasMaxLength(500);
-            entity.Property(e => e.Metadata).HasConversion(
-                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
-                v => System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new Dictionary<string, object>()
-            );
-            entity.HasIndex(e => e.ApplicationStatusId);
-            entity.HasIndex(e => e.ChangedAt);
-            entity.HasOne(e => e.ApplicationStatus)
-                  .WithMany(e => e.History)
-                  .HasForeignKey(e => e.ApplicationStatusId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
     }

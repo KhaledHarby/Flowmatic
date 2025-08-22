@@ -1,10 +1,31 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice } from '@reduxjs/toolkit';
+import type { PayloadAction } from '@reduxjs/toolkit';
 
-export interface WorkflowNode {
+export interface WorkflowDefinition {
   id: string;
-  type: string;
-  position: { x: number; y: number };
-  data: { label: string; [key: string]: any };
+  name: string;
+  description: string;
+  version: string;
+  status: 'Active' | 'Inactive' | 'Draft';
+  createdAt: string;
+  updatedAt: string;
+  nodes: any[];
+  edges: any[];
+}
+
+export interface WorkflowInstance {
+  id: string;
+  workflowId: string;
+  workflowName: string;
+  status: 'Running' | 'Completed' | 'Failed' | 'Suspended' | 'Cancelled';
+  currentStep: string;
+  progress: number;
+  startedAt: string;
+  completedAt?: string;
+  duration: string;
+  lastActivity: string;
+  priority: 'Low' | 'Medium' | 'High' | 'Critical';
+  description?: string;
 }
 
 export interface WorkflowEdge {
@@ -12,37 +33,16 @@ export interface WorkflowEdge {
   source: string;
   target: string;
   label?: string;
-}
-
-export interface WorkflowDefinition {
-  id: string;
-  name: string;
-  description: string;
-  category: string;
-  status: 'Draft' | 'Published' | 'Archived';
-  nodes: WorkflowNode[];
-  edges: WorkflowEdge[];
-  createdAt: string;
-  createdBy: string;
-}
-
-export interface WorkflowInstance {
-  id: string;
-  workflowDefinitionId: string;
-  applicationId: string;
-  status: 'Running' | 'Completed' | 'Failed' | 'Cancelled' | 'Suspended';
-  currentNodeId?: string;
-  variables: Record<string, any>;
-  startedAt: string;
-  completedAt?: string;
-  startedBy?: string;
+  data?: {
+    condition?: string;
+    service?: any;
+    [key: string]: any;
+  };
 }
 
 interface WorkflowState {
   definitions: WorkflowDefinition[];
   instances: WorkflowInstance[];
-  selectedDefinition: WorkflowDefinition | null;
-  selectedInstance: WorkflowInstance | null;
   loading: boolean;
   error: string | null;
 }
@@ -50,8 +50,6 @@ interface WorkflowState {
 const initialState: WorkflowState = {
   definitions: [],
   instances: [],
-  selectedDefinition: null,
-  selectedInstance: null,
   loading: false,
   error: null,
 };
@@ -69,35 +67,32 @@ const workflowSlice = createSlice({
     setDefinitions: (state, action: PayloadAction<WorkflowDefinition[]>) => {
       state.definitions = action.payload;
     },
+    setInstances: (state, action: PayloadAction<WorkflowInstance[]>) => {
+      state.instances = action.payload;
+    },
     addDefinition: (state, action: PayloadAction<WorkflowDefinition>) => {
       state.definitions.push(action.payload);
     },
     updateDefinition: (state, action: PayloadAction<WorkflowDefinition>) => {
-      const index = state.definitions.findIndex(d => d.id === action.payload.id);
+      const index = state.definitions.findIndex(def => def.id === action.payload.id);
       if (index !== -1) {
         state.definitions[index] = action.payload;
       }
     },
     deleteDefinition: (state, action: PayloadAction<string>) => {
-      state.definitions = state.definitions.filter(d => d.id !== action.payload);
-    },
-    setInstances: (state, action: PayloadAction<WorkflowInstance[]>) => {
-      state.instances = action.payload;
+      state.definitions = state.definitions.filter(def => def.id !== action.payload);
     },
     addInstance: (state, action: PayloadAction<WorkflowInstance>) => {
       state.instances.push(action.payload);
     },
     updateInstance: (state, action: PayloadAction<WorkflowInstance>) => {
-      const index = state.instances.findIndex(i => i.id === action.payload.id);
+      const index = state.instances.findIndex(inst => inst.id === action.payload.id);
       if (index !== -1) {
         state.instances[index] = action.payload;
       }
     },
-    setSelectedDefinition: (state, action: PayloadAction<WorkflowDefinition | null>) => {
-      state.selectedDefinition = action.payload;
-    },
-    setSelectedInstance: (state, action: PayloadAction<WorkflowInstance | null>) => {
-      state.selectedInstance = action.payload;
+    deleteInstance: (state, action: PayloadAction<string>) => {
+      state.instances = state.instances.filter(inst => inst.id !== action.payload);
     },
   },
 });
@@ -106,14 +101,13 @@ export const {
   setLoading,
   setError,
   setDefinitions,
+  setInstances,
   addDefinition,
   updateDefinition,
   deleteDefinition,
-  setInstances,
   addInstance,
   updateInstance,
-  setSelectedDefinition,
-  setSelectedInstance,
+  deleteInstance,
 } = workflowSlice.actions;
 
 export default workflowSlice.reducer;

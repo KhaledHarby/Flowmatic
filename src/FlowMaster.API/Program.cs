@@ -6,6 +6,8 @@ using Hangfire.SqlServer;
 using Hangfire.Dashboard;
 using FlowMaster.Infrastructure.Data;
 using FlowMaster.Application.Interfaces;
+using FlowMaster.Infrastructure.Repositories;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,7 +22,11 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 // Add services to the container
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 
 // Configure Entity Framework
 builder.Services.AddDbContext<FlowMasterDbContext>(options =>
@@ -38,14 +44,41 @@ builder.Services.AddHangfireServer();
 // Configure SignalR
 builder.Services.AddSignalR();
 
-// Configure CORS
+// Configure CORS (environment-driven)
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+var allowCredentials = builder.Configuration.GetValue<bool>("Cors:AllowCredentials");
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("FrontendCors", policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        if (builder.Environment.IsDevelopment())
+        {
+            // In development, allow all origins for easier debugging
+            policy.AllowAnyOrigin()
+                  .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
+                  .AllowAnyHeader();
+        }
+        else if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
+                  .AllowAnyHeader();
+
+            if (allowCredentials)
+            {
+                policy.AllowCredentials();
+            }
+            else
+            {
+                policy.DisallowCredentials();
+            }
+        }
+        else
+        {
+            // Fallback for development if not configured
+            policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        }
     });
 });
 
@@ -56,9 +89,14 @@ builder.Services.AddAutoMapper(typeof(Program));
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 
 // Register application services
+builder.Services.AddScoped<IWorkflowDefinitionService, FlowMaster.Application.Services.WorkflowDefinitionService>();
+builder.Services.AddScoped<IWorkflowDefinitionRepository, WorkflowDefinitionRepository>();
+builder.Services.AddScoped<IUserService, FlowMaster.Application.Services.UserService>();
+builder.Services.AddScoped<IUserRepository, FlowMaster.Infrastructure.Repositories.UserRepository>();
+builder.Services.AddScoped<IWorkflowInstanceRepository, FlowMaster.Infrastructure.Repositories.WorkflowInstanceRepository>();
+builder.Services.AddScoped<IUserAssignmentService, FlowMaster.Application.Services.UserAssignmentService>();
+builder.Services.AddScoped<IWorkflowEngine, FlowMaster.Application.Services.WorkflowEngine>();
 // TODO: Implement these services
-// builder.Services.AddScoped<IWorkflowDefinitionService, WorkflowDefinitionService>();
-// builder.Services.AddScoped<IWorkflowEngine, WorkflowEngine>();
 // builder.Services.AddScoped<IApplicationStatusService, ApplicationStatusService>();
 
 // Configure Swagger
@@ -111,9 +149,14 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseHttpsRedirection();
+// Only enforce HTTPS redirection outside Development to avoid redirect issues during local dev
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
-app.UseCors("AllowAll");
+// CORS must be registered before auth/endpoints
+app.UseCors("FrontendCors");
 
 app.UseAuthorization();
 
