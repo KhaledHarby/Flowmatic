@@ -10,15 +10,18 @@ public class WorkflowEngine : IWorkflowEngine
 {
     private readonly IWorkflowInstanceRepository _instanceRepository;
     private readonly IUserAssignmentService _userAssignmentService;
+    private readonly IServiceExecutionService _serviceExecutionService;
     private readonly ILogger<WorkflowEngine> _logger;
 
     public WorkflowEngine(
         IWorkflowInstanceRepository instanceRepository, 
         IUserAssignmentService userAssignmentService,
+        IServiceExecutionService serviceExecutionService,
         ILogger<WorkflowEngine> logger)
     {
         _instanceRepository = instanceRepository;
         _userAssignmentService = userAssignmentService;
+        _serviceExecutionService = serviceExecutionService;
         _logger = logger;
     }
 
@@ -63,12 +66,84 @@ public class WorkflowEngine : IWorkflowEngine
                 $"Processing node: {node.Name}"
             );
 
+            // Handle service node execution
+            if (node.Type == NodeType.ServiceNode)
+            {
+                await ExecuteServiceNodeAsync(instanceId, nodeId, instance.Variables);
+            }
+
             return true;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing node {NodeId} for instance {InstanceId}", nodeId, instanceId);
             return false;
+        }
+    }
+
+    private async Task ExecuteServiceNodeAsync(Guid instanceId, string nodeId, Dictionary<string, object> context)
+    {
+        try
+        {
+            _logger.LogInformation("Executing service node {NodeId} for workflow instance {InstanceId}", nodeId, instanceId);
+            
+            var result = await _serviceExecutionService.ExecuteServiceNodeAsync(instanceId, nodeId, context);
+            
+            if (result.IsSuccess)
+            {
+                _logger.LogInformation("Service node {NodeId} executed successfully for workflow instance {InstanceId}", nodeId, instanceId);
+                
+                // Add execution log for successful service execution
+                await _instanceRepository.AddExecutionLogAsync(
+                    instanceId,
+                    nodeId,
+                    "Service",
+                    NodeType.ServiceNode,
+                    LogLevel.Information,
+                    $"Service executed successfully: {result.ServiceName}",
+                    System.Text.Json.JsonSerializer.Serialize(result.ResponseData),
+                    null,
+                    false,
+                    null
+                );
+            }
+            else
+            {
+                _logger.LogError("Service node {NodeId} execution failed for workflow instance {InstanceId}: {ErrorMessage}", 
+                    nodeId, instanceId, result.ErrorMessage);
+                
+                // Add execution log for failed service execution
+                await _instanceRepository.AddExecutionLogAsync(
+                    instanceId,
+                    nodeId,
+                    "Service",
+                    NodeType.ServiceNode,
+                    LogLevel.Error,
+                    $"Service execution failed: {result.ErrorMessage}",
+                    System.Text.Json.JsonSerializer.Serialize(result.ResponseData),
+                    null,
+                    true,
+                    result.ErrorDetails
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error executing service node {NodeId} for workflow instance {InstanceId}", nodeId, instanceId);
+            
+            // Add execution log for service execution error
+            await _instanceRepository.AddExecutionLogAsync(
+                instanceId,
+                nodeId,
+                "Service",
+                NodeType.ServiceNode,
+                LogLevel.Error,
+                $"Service execution error: {ex.Message}",
+                null,
+                null,
+                true,
+                ex.ToString()
+            );
         }
     }
 

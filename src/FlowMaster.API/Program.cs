@@ -96,6 +96,15 @@ builder.Services.AddScoped<IUserRepository, FlowMaster.Infrastructure.Repositori
 builder.Services.AddScoped<IWorkflowInstanceRepository, FlowMaster.Infrastructure.Repositories.WorkflowInstanceRepository>();
 builder.Services.AddScoped<IUserAssignmentService, FlowMaster.Application.Services.UserAssignmentService>();
 builder.Services.AddScoped<IWorkflowEngine, FlowMaster.Application.Services.WorkflowEngine>();
+
+// Register service execution services
+builder.Services.AddScoped<IServiceExecutionService, FlowMaster.Application.Services.ServiceExecutionService>();
+builder.Services.AddScoped<IServiceConfigurationService, FlowMaster.Application.Services.ServiceConfigurationService>();
+builder.Services.AddScoped<IServiceConfigurationRepository, FlowMaster.Infrastructure.Repositories.ServiceConfigurationRepository>();
+builder.Services.AddScoped<IServiceExecutionRepository, FlowMaster.Infrastructure.Repositories.ServiceExecutionRepository>();
+
+// Register HttpClient for service execution
+builder.Services.AddHttpClient();
 // TODO: Implement these services
 // builder.Services.AddScoped<IApplicationStatusService, ApplicationStatusService>();
 

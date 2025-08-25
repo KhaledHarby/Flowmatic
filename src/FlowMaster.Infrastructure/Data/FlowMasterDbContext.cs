@@ -16,6 +16,8 @@ public class FlowMasterDbContext : DbContext
     public DbSet<WorkflowTask> WorkflowTasks { get; set; }
     public DbSet<WorkflowInstanceLog> WorkflowInstanceLogs { get; set; }
     public DbSet<User> Users { get; set; }
+    public DbSet<ServiceConfiguration> ServiceConfigurations { get; set; }
+    public DbSet<ServiceExecutionResult> ServiceExecutionResults { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -155,6 +157,48 @@ public class FlowMasterDbContext : DbContext
             entity.HasIndex(e => e.Level);
             entity.HasOne(e => e.WorkflowInstance)
                   .WithMany(e => e.ExecutionLog)
+                  .HasForeignKey(e => e.WorkflowInstanceId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ServiceConfiguration configuration
+        modelBuilder.Entity<ServiceConfiguration>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Endpoint).HasMaxLength(500);
+            entity.Property(e => e.Method).HasMaxLength(10);
+            entity.Property(e => e.Headers);
+            entity.Property(e => e.Parameters);
+            entity.Property(e => e.Authentication);
+            entity.Property(e => e.ValidationSchema);
+            entity.Property(e => e.CreatedBy).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.UpdatedBy).HasMaxLength(100);
+            entity.HasIndex(e => e.Name).IsUnique();
+            entity.HasIndex(e => e.Type);
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.CreatedAt);
+        });
+
+        // ServiceExecutionResult configuration
+        modelBuilder.Entity<ServiceExecutionResult>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.NodeId).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.ServiceName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.RequestData);
+            entity.Property(e => e.ResponseData);
+            entity.Property(e => e.ErrorMessage);
+            entity.Property(e => e.ErrorDetails);
+            entity.HasIndex(e => e.WorkflowInstanceId);
+            entity.HasIndex(e => e.NodeId);
+            entity.HasIndex(e => e.ServiceName);
+            entity.HasIndex(e => e.ServiceType);
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.StartedAt);
+            entity.HasIndex(e => e.IsSuccess);
+            entity.HasOne(e => e.WorkflowInstance)
+                  .WithMany()
                   .HasForeignKey(e => e.WorkflowInstanceId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
